@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// Dynamic API base URL: Uses VITE_API_URL in production (Render) or localhost in development
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api').replace(/\/+$/, '');
 
 /**
  * Convosis Django REST API Client

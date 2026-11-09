@@ -1,0 +1,1 @@
+web: gunicorn convosis_backend.wsgi:application
