@@ -670,7 +670,7 @@ export function AcademyProvider({ children }) {
   };
 
   // Add new student enrollment
-  const addStudent = (newStudentData) => {
+  const addStudent = async (newStudentData) => {
     const studentId = `STU-${Math.floor(1008 + Math.random() * 8990)}`;
     const student = {
       id: studentId,
@@ -689,7 +689,7 @@ export function AcademyProvider({ children }) {
 
     // Send welcome email automation log
     const welcomeLog = {
-      id: `log-${Date.now()}`,
+      id: `log-${Date.now()}-wel`,
       studentId: student.id,
       studentName: student.name,
       email: student.email,
@@ -701,7 +701,54 @@ export function AcademyProvider({ children }) {
     };
     setEmailLogs((prev) => [welcomeLog, ...prev]);
 
-    addToast(`Student ${student.name} enrolled successfully! Welcome kit email dispatched.`, 'success');
+    // If initial payment was collected at admission, generate receipt record
+    if (student.paidAmount > 0) {
+      const initialTxn = student.installments?.find(i => i.transactionRef)?.transactionRef || `TXN-${Math.floor(10000 + Math.random() * 90000)}`;
+      const receiptLog = {
+        id: `log-${Date.now()}-rec`,
+        studentId: student.id,
+        studentName: student.name,
+        email: student.email,
+        templateId: 'tpl-payment-receipt',
+        subject: `Official Receipt #${initialTxn} - Admission Payment Received`,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        status: 'Delivered',
+        trigger: 'Automated: Admission Payment'
+      };
+      setEmailLogs((prev) => [receiptLog, ...prev]);
+
+      try {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.7 }
+        });
+      } catch {}
+    }
+
+    // Sync to Django backend API asynchronously
+    try {
+      await ConvosisApi.createStudent({
+        student_id: student.id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone || '',
+        avatar: student.avatar || '',
+        program_title: student.programTitle || '',
+        program_type: student.programType || 'course',
+        enrollment_date: student.enrollmentDate,
+        payment_mode: student.paymentMode || 'installment',
+        total_fee: student.totalFee,
+        paid_amount: student.paidAmount,
+        remaining_balance: student.remainingBalance,
+        installments: student.installments || []
+      });
+    } catch (err) {
+      console.warn('Backend student creation sync notice:', err);
+    }
+
+    addToast(`Candidate ${student.name} admitted successfully! Welcome kit & records initialized.`, 'success');
+    return student;
   };
 
   // Delete candidate admission record

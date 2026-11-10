@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAcademy } from '../context/AcademyContext';
-import { UserPlus, BookOpen, Briefcase, CreditCard, X, Percent, CheckCircle2 } from 'lucide-react';
+import { UserPlus, BookOpen, Briefcase, CreditCard, X, Percent, CheckCircle2, FileText } from 'lucide-react';
 
 export default function NewAdmissionModal() {
   const { 
@@ -10,7 +10,8 @@ export default function NewAdmissionModal() {
     internships, 
     dualPrograms,
     settings, 
-    addStudent 
+    addStudent,
+    openInvoice
   } = useAcademy();
 
   const allPrograms = [...courses, ...internships, ...(dualPrograms || [])];
@@ -19,15 +20,33 @@ export default function NewAdmissionModal() {
     name: '',
     email: '',
     phone: '',
-    address: '',
+    address: 'Vilayil Veedu, Ellukala , Puthuppally P.O, Kottayam',
     programId: allPrograms[0]?.id || '',
     paymentMode: 'installment', // 'full' or 'installment'
     initialPaymentMade: false,
-    paymentMethod: 'UPI'
+    paymentMethod: 'UPI / QR Instant Pay'
   });
 
   const [feeDiscount, setFeeDiscount] = useState('');
   const [discountReason, setDiscountReason] = useState('Merit Scholarship');
+
+  // Reset form with clean state every time modal opens
+  useEffect(() => {
+    if (isAdmissionModalOpen) {
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        address: 'Vilayil Veedu, Ellukala , Puthuppally P.O, Kottayam',
+        programId: allPrograms[0]?.id || '',
+        paymentMode: 'installment',
+        initialPaymentMade: false,
+        paymentMethod: 'UPI / QR Instant Pay'
+      });
+      setFeeDiscount('');
+      setDiscountReason('Merit Scholarship');
+    }
+  }, [isAdmissionModalOpen, allPrograms.length]);
 
   if (!isAdmissionModalOpen) return null;
 
@@ -83,8 +102,8 @@ export default function NewAdmissionModal() {
     };
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, openInvoiceAfter = false) => {
+    if (e && e.preventDefault) e.preventDefault();
 
     let installments = [];
     let paidAmount = 0;
@@ -175,7 +194,7 @@ export default function NewAdmissionModal() {
       adjustedBy: 'Admin'
     } : null;
 
-    addStudent({
+    const admittedStudent = await addStudent({
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
@@ -196,6 +215,12 @@ export default function NewAdmissionModal() {
     });
 
     setIsAdmissionModalOpen(false);
+
+    if (openInvoiceAfter && admittedStudent) {
+      setTimeout(() => {
+        openInvoice(admittedStudent, admittedStudent.programType === 'internship' ? 'retainer' : 'tax');
+      }, 150);
+    }
   };
 
   return (
@@ -412,15 +437,15 @@ export default function NewAdmissionModal() {
               <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                 <div className="p-2 rounded-lg border border-slate-200 bg-white">
                   <div className="text-slate-400">Month 1 (Today)</div>
-                  <div className="font-bold text-slate-800 text-xs">₹{monthlyAmt.toLocaleString()}</div>
+                  <div className="font-bold text-slate-800 text-xs">₹{(installmentsSchedule[0]?.amount || finalMonthlyAmt).toLocaleString()}</div>
                 </div>
                 <div className="p-2 rounded-lg border border-slate-200 bg-white">
                   <div className="text-slate-400">Month 2 (+30d)</div>
-                  <div className="font-bold text-slate-800 text-xs">₹{monthlyAmt.toLocaleString()}</div>
+                  <div className="font-bold text-slate-800 text-xs">₹{(installmentsSchedule[1]?.amount || finalMonthlyAmt).toLocaleString()}</div>
                 </div>
                 <div className="p-2 rounded-lg border border-slate-200 bg-white">
                   <div className="text-slate-400">Month 3 (+60d)</div>
-                  <div className="font-bold text-slate-800 text-xs">₹{monthlyAmt.toLocaleString()}</div>
+                  <div className="font-bold text-slate-800 text-xs">₹{(installmentsSchedule[2]?.amount || finalMonthlyAmt).toLocaleString()}</div>
                 </div>
               </div>
 
@@ -433,7 +458,7 @@ export default function NewAdmissionModal() {
                   className="rounded cursor-pointer text-cyan-600"
                 />
                 <label htmlFor="m1Paid" className="cursor-pointer font-semibold text-slate-700">
-                  Collect Month 1 Installment (₹{monthlyAmt.toLocaleString()}) immediately upon admission
+                  Collect Month 1 Installment (₹{(installmentsSchedule[0]?.amount || finalMonthlyAmt).toLocaleString()}) immediately upon admission
                 </label>
               </div>
             </div>
@@ -448,7 +473,7 @@ export default function NewAdmissionModal() {
                 onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg glass-input cursor-pointer"
               >
-                <option value="UPI / QR Instant Pay">UPI / QR Instant Pay</option>
+                <option value="UPI / QR Instant Pay">UPI / QR Instant Pay (UPI(ID:628943139310))</option>
                 <option value="Direct Bank Transfer (NEFT/RTGS)">Direct Bank Transfer (NEFT/RTGS)</option>
                 <option value="Credit / Debit Card">Credit / Debit Card</option>
                 <option value="Cash Counter">Cash Counter</option>
@@ -457,21 +482,32 @@ export default function NewAdmissionModal() {
           )}
 
           {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIsAdmissionModalOpen(false)}
-              className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer"
+              className="w-full sm:w-auto px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer text-xs"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Complete Admission</span>
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                className="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg bg-[#0a2f5c] hover:bg-[#072447] text-white font-semibold shadow-xs transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 text-xs"
+                title="Admit candidate and immediately view official Convosis Retainer Invoice"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Admit & Open Retainer</span>
+              </button>
+              <button
+                type="submit"
+                className="flex-1 sm:flex-none px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold shadow-xs transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 text-xs"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Complete Admission</span>
+              </button>
+            </div>
           </div>
 
         </form>

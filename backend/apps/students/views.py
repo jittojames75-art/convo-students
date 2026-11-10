@@ -11,6 +11,33 @@ class StudentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'email', 'student_id', 'program_title']
 
+    def create(self, request, *args, **kwargs):
+        installments_data = request.data.get('installments', [])
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        student = serializer.save()
+
+        # Create installments if provided
+        for inst in installments_data:
+            try:
+                Installment.objects.create(
+                    student=student,
+                    month=inst.get('month', 1),
+                    title=inst.get('title', f"Month {inst.get('month', 1)} Installment"),
+                    amount=inst.get('amount', 0),
+                    due_date=inst.get('dueDate') or inst.get('due_date') or date.today(),
+                    status=inst.get('status', 'pending'),
+                    paid_date=inst.get('paidDate') or inst.get('paid_date'),
+                    transaction_ref=inst.get('transactionRef') or inst.get('transaction_ref'),
+                    payment_method=inst.get('method') or inst.get('payment_method'),
+                    note=inst.get('note', '')
+                )
+            except Exception:
+                pass
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(StudentSerializer(student).data, status=status.HTTP_201_CREATED, headers=headers)
+
     @action(detail=True, methods=['post'], url_path='record-payment')
     def record_payment(self, request, pk=None):
         student = self.get_object()
