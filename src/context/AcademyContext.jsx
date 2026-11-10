@@ -170,6 +170,28 @@ export function AcademyProvider({ children }) {
     return INITIAL_ACADEMY_SETTINGS;
   });
 
+  // Company Authorised Signature (PDF/Image Data URL)
+  const [companySignature, setCompanySignature] = useState(() => {
+    return localStorage.getItem('convosis_company_signature') || null;
+  });
+
+  const updateCompanySignature = (dataUrl) => {
+    setCompanySignature(dataUrl);
+    if (dataUrl) {
+      localStorage.setItem('convosis_company_signature', dataUrl);
+      addToast('Company authorised signature updated and saved!', 'success');
+    } else {
+      localStorage.removeItem('convosis_company_signature');
+      addToast('Company authorised signature removed. Default signature restored.', 'info');
+    }
+  };
+
+  const removeCompanySignature = () => {
+    setCompanySignature(null);
+    localStorage.removeItem('convosis_company_signature');
+    addToast('Company authorised signature reset to default.', 'info');
+  };
+
   // Modal states
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -1350,6 +1372,10 @@ export function AcademyProvider({ children }) {
         activeInvoiceData,
         setActiveInvoiceData,
         openInvoice,
+        // Company Authorised Signature & Seal
+        companySignature,
+        updateCompanySignature,
+        removeCompanySignature,
         // Fee Adjustment & Due Amount Management
         isFeeAdjustmentModalOpen,
         setIsFeeAdjustmentModalOpen,

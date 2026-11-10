@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAcademy } from '../context/AcademyContext';
 import { 
   Printer, 
@@ -10,9 +10,13 @@ import {
   Sparkles,
   Download,
   Copy,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Upload,
+  Trash2,
+  Stamp
 } from 'lucide-react';
 import { numberToIndianWords } from '../utils/numberToWords';
+import { processSignatureFile } from '../utils/signatureLoader';
 
 export default function RetainerInvoiceModal() {
   const { 
@@ -21,9 +25,17 @@ export default function RetainerInvoiceModal() {
     activeInvoiceData, 
     organization,
     settings,
+    companySignature,
+    updateCompanySignature,
+    removeCompanySignature,
     openFeeAdjustment,
     addToast
   } = useAcademy();
+
+  const fileInputRef = useRef(null);
+  const [isProcessingSig, setIsProcessingSig] = useState(false);
+  const [signatoryRole, setSignatoryRole] = useState('Authorised Signatory');
+  const [useBlankSignature, setUseBlankSignature] = useState(false);
 
   const [docType, setDocType] = useState('retainer'); // 'retainer' or 'tax'
   const [templateMode, setTemplateMode] = useState('filled'); // 'filled' or 'blank'
@@ -124,6 +136,24 @@ export default function RetainerInvoiceModal() {
     }));
   };
 
+  const handleSignatureUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsProcessingSig(true);
+      const dataUrl = await processSignatureFile(file);
+      updateCompanySignature(dataUrl);
+      setUseBlankSignature(false);
+      addToast(`Company authorised signature uploaded and applied to invoices!`, 'success');
+    } catch (err) {
+      addToast(`Error processing signature file: ${err.message}`, 'error');
+    } finally {
+      setIsProcessingSig(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const isBlank = templateMode === 'blank';
 
   const docTitle = docType === 'retainer' ? 'RETAINER INVOICE' : 'TAX INVOICE';
@@ -201,7 +231,29 @@ export default function RetainerInvoiceModal() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Hidden file input for company signature PDF or Image */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleSignatureUpload}
+              accept=".pdf,image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+              className="hidden"
+            />
+
+            {!isBlank && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessingSig}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 shadow-xs cursor-pointer transition-all"
+                title="Upload company authorised signature from PDF or Image"
+              >
+                <Upload className="w-3.5 h-3.5 text-cyan-600" />
+                <span>{isProcessingSig ? 'Reading PDF...' : companySignature ? 'Change Signature' : 'Upload Signature PDF'}</span>
+              </button>
+            )}
+
             {!isBlank && activeInvoiceData?.studentObj && (
               <button
                 type="button"
@@ -633,35 +685,85 @@ export default function RetainerInvoiceModal() {
           {/* Authorized Signatory Section */}
           <div className="pt-6 flex items-end justify-between">
             <div className="space-y-1">
-              {/* Authentic Handwritten Signature (from official Convosis receipt) */}
-              {!isBlank ? (
-                <div className="h-14 w-44 flex items-center">
-                  <svg viewBox="0 0 160 50" className="w-40 h-13 text-slate-900">
-                    <path 
-                      d="M 8 36 Q 24 10 34 27 T 48 29 Q 62 4 68 31 T 88 27 Q 102 14 122 34 Q 138 29 152 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2.2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
+              {/* Authentic Handwritten Signature: Custom Uploaded PDF/Image or Default Convosis Signature */}
+              {!isBlank && !useBlankSignature ? (
+                companySignature ? (
+                  <div className="h-16 w-52 flex items-center relative group">
+                    <img 
+                      src={companySignature} 
+                      alt="Company Authorised Signature" 
+                      className="max-h-16 max-w-[200px] w-auto object-contain select-none"
                     />
-                    <path 
-                      d="M 18 21 Q 48 14 82 21 T 136 17" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
-                      strokeLinecap="round" 
-                    />
-                  </svg>
-                </div>
+                    {isEditing && (
+                      <div className="absolute -top-2 -right-4 hidden group-hover:flex items-center gap-1 bg-white p-1 rounded-md border border-slate-300 shadow-xs">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-1 text-cyan-600 hover:bg-cyan-50 rounded"
+                          title="Upload new signature PDF/image"
+                        >
+                          <Upload className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={removeCompanySignature}
+                          className="p-1 text-rose-600 hover:bg-rose-50 rounded"
+                          title="Reset to default Convosis handwritten signature"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-14 w-44 flex items-center relative group">
+                    <svg viewBox="0 0 160 50" className="w-40 h-13 text-slate-900">
+                      <path 
+                        d="M 8 36 Q 24 10 34 27 T 48 29 Q 62 4 68 31 T 88 27 Q 102 14 122 34 Q 138 29 152 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2.2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                      />
+                      <path 
+                        d="M 18 21 Q 48 14 82 21 T 136 17" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="1.5" 
+                        strokeLinecap="round" 
+                      />
+                    </svg>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute -top-1 -right-2 hidden group-hover:flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-300 text-[10px] text-cyan-700 font-semibold shadow-xs"
+                      >
+                        <Upload className="w-2.5 h-2.5" />
+                        <span>Upload PDF</span>
+                      </button>
+                    )}
+                  </div>
+                )
               ) : (
-                <div className="h-14 w-44" />
+                <div className="h-14 w-44 border-b border-dashed border-slate-400 mb-1" />
               )}
+
               <div className="text-xs font-bold text-slate-900 uppercase">
                 For CONVOSIS TECHNOLOGIES PRIVATE LIMITED
               </div>
               <div className="text-[11px] text-slate-600">
-                Authorised Signatory
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={signatoryRole}
+                    onChange={(e) => setSignatoryRole(e.target.value)}
+                    className="px-1 py-0.5 border border-cyan-400 rounded text-[11px]"
+                  />
+                ) : (
+                  signatoryRole
+                )}
               </div>
             </div>
 

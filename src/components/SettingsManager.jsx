@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAcademy } from '../context/AcademyContext';
 import { 
   Building, 
@@ -9,8 +9,12 @@ import {
   Globe,
   Percent,
   CreditCard,
-  Lock
+  Lock,
+  Upload,
+  Trash2,
+  Stamp
 } from 'lucide-react';
+import { processSignatureFile } from '../utils/signatureLoader';
 
 export default function SettingsManager() {
   const { 
@@ -18,8 +22,14 @@ export default function SettingsManager() {
     setSettings, 
     currentUser,
     isAdminOrSuperAdmin,
+    companySignature,
+    updateCompanySignature,
+    removeCompanySignature,
     addToast 
   } = useAcademy();
+
+  const fileInputRef = useRef(null);
+  const [isProcessingSig, setIsProcessingSig] = useState(false);
 
   const [formData, setFormData] = useState({ 
     ...settings,
@@ -274,6 +284,104 @@ export default function SettingsManager() {
             </div>
             <div className="text-[10px] text-emerald-700 font-bold text-right">
               Standard 3-Month Plan: 3x ₹{Math.round(computedTotal / 3).toLocaleString()} / month
+            </div>
+          </div>
+        </div>
+
+        {/* Company Authorised Signature & Seal (For Retainer & Tax Invoices) */}
+        <div className="pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-2 pb-2">
+            <Stamp className="w-4 h-4 text-cyan-600" />
+            <h3 className="font-bold text-slate-800 text-xs">
+              Company Authorised Signature & Seal (Retainer & Tax Invoices)
+            </h3>
+          </div>
+          <p className="text-[11px] text-slate-500 mb-3">
+            Upload the official authorised signatory scan or digital stamp. Supports PDF files or images (PNG, JPG, SVG). It will automatically render on all generated official invoices and receipts.
+          </p>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".pdf,image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                setIsProcessingSig(true);
+                const dataUrl = await processSignatureFile(file);
+                updateCompanySignature(dataUrl);
+              } catch (err) {
+                addToast('Failed to process signature: ' + err.message, 'error');
+              } finally {
+                setIsProcessingSig(false);
+                if (e.target) e.target.value = '';
+              }
+            }}
+          />
+
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-48 h-16 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-2 overflow-hidden shadow-2xs">
+                {companySignature ? (
+                  <img
+                    src={companySignature}
+                    alt="Company Authorised Signature"
+                    className="max-h-14 max-w-[180px] w-auto object-contain"
+                  />
+                ) : (
+                  <svg viewBox="0 0 160 50" className="w-36 h-12 text-slate-800">
+                    <path
+                      d="M 8 36 Q 24 10 34 27 T 48 29 Q 62 4 68 31 T 88 27 Q 102 14 122 34 Q 138 29 152 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M 18 21 Q 48 14 82 21 T 136 17"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                )}
+              </div>
+              <div className="text-xs">
+                <div className="font-bold text-slate-900">
+                  {companySignature ? 'Custom Signature Active' : 'Default Convosis Handwritten Signature'}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  {companySignature ? 'Rendered from uploaded company file' : 'Official Convosis authorized signatory'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessingSig}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 shadow-xs cursor-pointer transition-all"
+              >
+                <Upload className="w-3.5 h-3.5 text-cyan-600" />
+                <span>{isProcessingSig ? 'Extracting PDF...' : companySignature ? 'Replace PDF/Image' : 'Upload Signature PDF'}</span>
+              </button>
+
+              {companySignature && (
+                <button
+                  type="button"
+                  onClick={removeCompanySignature}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 cursor-pointer transition-all"
+                  title="Reset to default Convosis handwritten signature"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Reset Default</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
