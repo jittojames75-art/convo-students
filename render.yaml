@@ -26,7 +26,7 @@ services:
         value: "3.11.9"
 
   # 2. React Vite Frontend Static Site
-  - type: web
+  - type: static
     name: convosis-frontend
     runtime: static
     plan: free
