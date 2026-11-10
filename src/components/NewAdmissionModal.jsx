@@ -26,6 +26,9 @@ export default function NewAdmissionModal() {
     paymentMethod: 'UPI'
   });
 
+  const [feeDiscount, setFeeDiscount] = useState('');
+  const [discountReason, setDiscountReason] = useState('Merit Scholarship');
+
   if (!isAdmissionModalOpen) return null;
 
   // Empty state guard
@@ -62,13 +65,23 @@ export default function NewAdmissionModal() {
   const gstAmount = selectedProgram.gstAmount || Math.round(baseFee * (gstPercent / 100));
   const fullAmount = selectedProgram.fullAmount || selectedProgram.feeStructure?.fullAmount || (baseFee + gstAmount); // 17,700
   const months = selectedProgram.installmentMonths || selectedProgram.feeStructure?.installmentMonths || 3;
-  const monthlyAmt = selectedProgram.installmentAmount || selectedProgram.feeStructure?.monthlyInstallment || Math.round(fullAmount / months); // 5,900
 
-  const installmentsSchedule = selectedProgram.feeStructure?.installmentBreakdown || Array.from({ length: months }, (_, i) => ({
-    month: i + 1,
-    title: `Month ${i + 1} Installment (Base ₹${Math.round(baseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
-    amount: monthlyAmt
-  }));
+  // Fee Adjustment / Concession Calculation
+  const numDiscount = Math.min(fullAmount, Math.max(0, Number(feeDiscount) || 0));
+  const finalTotalFee = fullAmount - numDiscount;
+  const finalBaseFee = Math.round(finalTotalFee / 1.18);
+  const finalGstAmount = finalTotalFee - finalBaseFee;
+  const finalMonthlyAmt = Math.round(finalTotalFee / months);
+
+  const installmentsSchedule = Array.from({ length: months }, (_, i) => {
+    const isLast = i === months - 1;
+    const allocated = isLast ? (finalTotalFee - (finalMonthlyAmt * (months - 1))) : finalMonthlyAmt;
+    return {
+      month: i + 1,
+      title: `Month ${i + 1} Installment (Base ₹${Math.round(finalBaseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
+      amount: allocated
+    };
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -87,13 +100,13 @@ export default function NewAdmissionModal() {
     const dateM3 = d3.toISOString().split('T')[0];
 
     if (formData.paymentMode === 'full') {
-      paidAmount = fullAmount;
+      paidAmount = finalTotalFee;
       installments = [
         {
           id: `inst-${Date.now()}-1`,
           month: 1,
-          title: `Full Tuition (Base ₹${baseFee.toLocaleString()} + 18% GST)`,
-          amount: fullAmount,
+          title: `Full Tuition (Base ₹${finalBaseFee.toLocaleString()} + 18% GST)`,
+          amount: finalTotalFee,
           dueDate: today,
           status: 'paid',
           paidDate: today,
@@ -102,9 +115,9 @@ export default function NewAdmissionModal() {
         }
       ];
     } else {
-      const m1Amt = installmentsSchedule[0]?.amount || monthlyAmt;
-      const m2Amt = installmentsSchedule[1]?.amount || monthlyAmt;
-      const m3Amt = installmentsSchedule[2]?.amount || monthlyAmt;
+      const m1Amt = installmentsSchedule[0]?.amount || finalMonthlyAmt;
+      const m2Amt = installmentsSchedule[1]?.amount || finalMonthlyAmt;
+      const m3Amt = installmentsSchedule[2]?.amount || finalMonthlyAmt;
 
       if (formData.initialPaymentMade) {
         paidAmount = m1Amt;
@@ -114,7 +127,7 @@ export default function NewAdmissionModal() {
         {
           id: `inst-${Date.now()}-1`,
           month: 1,
-          title: `Month 1 Installment (Base ₹${Math.round(baseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
+          title: `Month 1 Installment (Base ₹${Math.round(finalBaseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
           amount: m1Amt,
           dueDate: today,
           status: formData.initialPaymentMade ? 'paid' : 'pending',
@@ -125,7 +138,7 @@ export default function NewAdmissionModal() {
         {
           id: `inst-${Date.now()}-2`,
           month: 2,
-          title: `Month 2 Installment (Base ₹${Math.round(baseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
+          title: `Month 2 Installment (Base ₹${Math.round(finalBaseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
           amount: m2Amt,
           dueDate: dateM2,
           status: 'pending',
@@ -136,7 +149,7 @@ export default function NewAdmissionModal() {
         {
           id: `inst-${Date.now()}-3`,
           month: 3,
-          title: `Month 3 Installment (Base ₹${Math.round(baseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
+          title: `Month 3 Installment (Base ₹${Math.round(finalBaseFee / months).toLocaleString()} + ${gstPercent}% GST)`,
           amount: m3Amt,
           dueDate: dateM3,
           status: 'pending',
@@ -147,6 +160,21 @@ export default function NewAdmissionModal() {
       ];
     }
 
+    const remainingDue = Math.max(0, finalTotalFee - paidAmount);
+
+    const adjustmentRecord = numDiscount > 0 ? {
+      id: `adj-adm-${Date.now()}`,
+      date: today,
+      type: 'discount',
+      amount: numDiscount,
+      reason: discountReason || 'Admission Fee Concession',
+      previousTotal: fullAmount,
+      newTotal: finalTotalFee,
+      previousDue: fullAmount,
+      newDue: remainingDue,
+      adjustedBy: 'Admin'
+    } : null;
+
     addStudent({
       name: formData.name,
       email: formData.email,
@@ -156,12 +184,14 @@ export default function NewAdmissionModal() {
       programTitle: selectedProgram.title,
       programType: selectedProgram.type,
       paymentMode: formData.paymentMode,
-      baseFee,
+      baseFee: finalBaseFee,
       gstPercent,
-      gstAmount,
-      totalFee: fullAmount,
+      gstAmount: finalGstAmount,
+      totalFee: finalTotalFee,
       paidAmount,
-      remainingBalance: Math.max(0, fullAmount - paidAmount),
+      remainingBalance: remainingDue,
+      feeAdjustment: adjustmentRecord,
+      adjustmentHistory: adjustmentRecord ? [adjustmentRecord] : [],
       installments
     });
 
@@ -282,20 +312,59 @@ export default function NewAdmissionModal() {
             </select>
           </div>
 
-          {/* Fee & GST Breakdown Preview Card */}
-          <div className="p-3 rounded-xl bg-cyan-50/70 border border-cyan-200 text-xs space-y-1">
+          {/* Fee & GST Breakdown Preview Card with Optional Fee Adjustment */}
+          <div className="p-3.5 rounded-xl bg-cyan-50/70 border border-cyan-200 text-xs space-y-2">
             <div className="flex justify-between items-center text-slate-600">
-              <span>Base Tuition Fee:</span>
-              <span className="font-bold text-slate-800">₹{baseFee.toLocaleString()}</span>
+              <span>Standard Package Fee (Base + 18% GST):</span>
+              <span className="font-bold text-slate-800">₹{fullAmount.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center text-slate-600">
-              <span>Mandatory GST ({gstPercent}%):</span>
-              <span className="font-bold text-slate-800">₹{gstAmount.toLocaleString()}</span>
+
+            {/* Optional Fee Adjustment / Scholarship Input */}
+            <div className="pt-2 border-t border-cyan-200/80">
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-700 flex items-center gap-1">
+                  <span>Fee Adjustment / Scholarship Concession (Optional)</span>
+                </label>
+                {numDiscount > 0 && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    -₹{numDiscount.toLocaleString()} Concession
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-500">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={fullAmount}
+                    step="500"
+                    placeholder="Concession amount (e.g. 5400)"
+                    value={feeDiscount}
+                    onChange={(e) => setFeeDiscount(e.target.value)}
+                    className="w-full pl-6 pr-3 py-1.5 rounded-lg bg-white border border-slate-300 font-bold text-xs outline-hidden"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Reason (e.g. Merit Scholarship)"
+                  value={discountReason}
+                  onChange={(e) => setDiscountReason(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs outline-hidden"
+                />
+              </div>
             </div>
-            <div className="flex justify-between items-center pt-1 border-t border-cyan-200 font-extrabold text-cyan-900 text-sm">
-              <span>Total Tuition (Inclusive of GST):</span>
-              <span>₹{fullAmount.toLocaleString()}</span>
+
+            <div className="flex justify-between items-center pt-2 border-t border-cyan-200 font-extrabold text-cyan-900 text-sm">
+              <span>Adjusted Net Total Fee:</span>
+              <span className="text-base text-cyan-900">₹{finalTotalFee.toLocaleString()}</span>
             </div>
+            {numDiscount > 0 && (
+              <div className="flex justify-between items-center text-[10px] text-slate-500">
+                <span>Base: ₹{finalBaseFee.toLocaleString()} + 18% GST: ₹{finalGstAmount.toLocaleString()}</span>
+                <span className="font-semibold text-emerald-700">Initial Due Amount: ₹{finalTotalFee.toLocaleString()}</span>
+              </div>
+            )}
           </div>
 
           {/* Payment Plan Selection */}
@@ -313,7 +382,7 @@ export default function NewAdmissionModal() {
                 <div className="font-bold text-xs text-slate-800">Full Payment</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">100% upfront settlement</div>
                 <div className="text-sm font-extrabold text-cyan-800 mt-1.5">
-                  ₹{fullAmount.toLocaleString()}
+                  ₹{finalTotalFee.toLocaleString()}
                 </div>
               </div>
 
@@ -328,7 +397,7 @@ export default function NewAdmissionModal() {
                 <div className="font-bold text-xs text-slate-800">3-Month Installment</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">3 monthly milestone payments</div>
                 <div className="text-sm font-extrabold text-emerald-700 mt-1.5">
-                  3x ₹{monthlyAmt.toLocaleString()} / mo
+                  3x ₹{finalMonthlyAmt.toLocaleString()} / mo
                 </div>
               </div>
             </div>

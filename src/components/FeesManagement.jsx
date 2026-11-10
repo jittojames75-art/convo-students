@@ -12,7 +12,9 @@ import {
   ArrowUpRight,
   TrendingUp,
   Receipt,
-  Download
+  Download,
+  SlidersHorizontal,
+  Tag
 } from 'lucide-react';
 
 export default function FeesManagement() {
@@ -27,18 +29,21 @@ export default function FeesManagement() {
     setActiveReceiptData,
     setIsReceiptModalOpen,
     openInvoice,
+    openFeeAdjustment,
     setIsComposeEmailOpen,
     setComposeEmailProps,
     addToast
   } = useAcademy();
 
-  const [feeFilter, setFeeFilter] = useState('all'); // 'all' | 'overdue' | 'pending' | 'settled'
+  const [feeFilter, setFeeFilter] = useState('all'); // 'all' | 'due' | 'overdue' | 'pending' | 'settled'
   const [searchTerm, setSearchTerm] = useState('');
 
   // Calculations
   const totalCollected = students.reduce((acc, s) => acc + s.paidAmount, 0);
   const totalReceivables = students.reduce((acc, s) => acc + s.remainingBalance, 0);
   const totalRevenue = totalCollected + totalReceivables;
+
+  const withDueList = students.filter((s) => s.remainingBalance > 0);
 
   const overdueList = students.filter(
     (s) => s.paymentMode === 'installment' && s.installments.some((i) => i.status === 'overdue')
@@ -55,6 +60,9 @@ export default function FeesManagement() {
       if (!match) return false;
     }
 
+    if (feeFilter === 'due') {
+      return s.remainingBalance > 0;
+    }
     if (feeFilter === 'overdue') {
       return s.paymentMode === 'installment' && s.installments.some((i) => i.status === 'overdue');
     }
@@ -159,16 +167,16 @@ export default function FeesManagement() {
           </div>
         </div>
 
-        <div className="glass-card rounded-xl p-3.5 border">
+        <div className="glass-card rounded-xl p-3.5 border bg-amber-50/20 dark:bg-amber-950/10 border-amber-200/60">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Active Receivables</span>
+            <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">Total Due Amount</span>
             <Clock className="w-4 h-4 text-amber-600" />
           </div>
           <div className="mt-1 text-2xl font-extrabold text-amber-600">
             {settings.currency}{totalReceivables.toLocaleString()}
           </div>
           <div className="mt-1 text-[11px] text-slate-500">
-            Across next 60 days
+            Outstanding from {withDueList.length} candidate(s)
           </div>
         </div>
 
@@ -200,6 +208,16 @@ export default function FeesManagement() {
             All Accounts ({students.length})
           </button>
           <button
+            onClick={() => setFeeFilter('due')}
+            className={`px-3 py-1.5 rounded-xl font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              feeFilter === 'due'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'text-amber-700 border-amber-500/30 hover:bg-amber-50/20'
+            }`}
+          >
+            <span>With Due Amount ({withDueList.length})</span>
+          </button>
+          <button
             onClick={() => setFeeFilter('overdue')}
             className={`px-3 py-1.5 rounded-xl font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
               feeFilter === 'overdue'
@@ -213,8 +231,8 @@ export default function FeesManagement() {
             onClick={() => setFeeFilter('pending')}
             className={`px-3 py-1.5 rounded-xl font-semibold border transition-all cursor-pointer ${
               feeFilter === 'pending'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'text-amber-600 border-amber-500/30 hover:bg-amber-50/20'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-indigo-600 border-indigo-500/30 hover:bg-indigo-50/20'
             }`}
           >
             Upcoming Installments ({pendingList.length})
@@ -227,7 +245,7 @@ export default function FeesManagement() {
                 : 'text-emerald-600 border-emerald-500/30 hover:bg-emerald-50/20'
             }`}
           >
-            Fully Settled
+            Fully Settled (₹0 Due)
           </button>
         </div>
 
@@ -262,12 +280,18 @@ export default function FeesManagement() {
                     className="w-8 h-8 rounded-full object-cover border border-slate-200"
                   />
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-slate-900 text-xs sm:text-sm">{student.name}</span>
                       <span className="text-[10px] font-mono text-slate-400">({student.id})</span>
                       <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
                         {student.programTitle}
                       </span>
+                      {student.feeAdjustment && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-0.5" title={student.feeAdjustment.reason}>
+                          <Tag className="w-2.5 h-2.5" />
+                          <span>Adjusted: {student.feeAdjustment.amount ? `₹${student.feeAdjustment.amount.toLocaleString()}` : student.feeAdjustment.type}</span>
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.2">
                       Mode: <span className="font-semibold text-slate-700">{student.paymentMode === 'full' ? 'Full Settlement' : '3-Month Plan'}</span> • Enrolled: {student.enrollmentDate}
@@ -275,28 +299,40 @@ export default function FeesManagement() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-right">
+                <div className="flex items-center gap-2.5 text-right flex-wrap sm:flex-nowrap justify-end">
                   <div>
                     <div className="text-[9px] uppercase font-bold text-slate-400">Settled / Total</div>
                     <div className="text-xs sm:text-sm font-bold text-cyan-700">
-                      {settings.currency}{student.paidAmount} / {settings.currency}{student.totalFee}
+                      {settings.currency}{student.paidAmount.toLocaleString()} / {settings.currency}{student.totalFee.toLocaleString()}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[9px] uppercase font-bold text-slate-400">Remaining</div>
-                    <div className={`text-xs sm:text-sm font-bold ${student.remainingBalance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {settings.currency}{student.remainingBalance}
+                    <div className="text-[9px] uppercase font-bold text-slate-400">Due Amount</div>
+                    <div className={`text-xs sm:text-sm font-extrabold ${student.remainingBalance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {settings.currency}{student.remainingBalance.toLocaleString()}
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => openInvoice(student, 'retainer')}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#0a2f5c] hover:bg-[#072447] text-white shadow-xs cursor-pointer transition-all ml-1"
-                    title="Generate and print official Convosis Retainer Invoice"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Retainer</span>
-                  </button>
+                  {/* Actions: Adjust Fee, Retainer, Tax Invoice */}
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <button
+                      onClick={() => openFeeAdjustment(student)}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs cursor-pointer transition-all"
+                      title="Adjust student fee, apply concession/discount, or set target due amount"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>Adjust Fee</span>
+                    </button>
+
+                    <button
+                      onClick={() => openInvoice(student, 'retainer')}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#0a2f5c] hover:bg-[#072447] text-white shadow-xs cursor-pointer transition-all"
+                      title="Generate and print official Convosis Retainer Invoice"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Retainer</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

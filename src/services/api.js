@@ -182,7 +182,16 @@ export const ConvosisApi = {
 
   // Fees & Installments
   async recordPayment(studentId, payload) {
-    const res = await fetch(`${API_BASE_URL}/students/${studentId}/record_payment/`, {
+    const res = await fetch(`${API_BASE_URL}/students/${studentId}/record-payment/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return res.json();
+  },
+
+  async adjustFee(studentId, payload) {
+    const res = await fetch(`${API_BASE_URL}/students/${studentId}/adjust-fee/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

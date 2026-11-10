@@ -15,6 +15,7 @@ import NewAdmissionModal from './components/NewAdmissionModal';
 import PaymentModal from './components/PaymentModal';
 import ReceiptModal from './components/ReceiptModal';
 import RetainerInvoiceModal from './components/RetainerInvoiceModal';
+import FeeAdjustmentModal from './components/FeeAdjustmentModal';
 import ComposeEmailModal from './components/ComposeEmailModal';
 import AuthModal from './components/AuthModal';
 import LoginPage from './components/LoginPage';
@@ -82,6 +83,7 @@ export default function App() {
       <PaymentModal />
       <ReceiptModal />
       <RetainerInvoiceModal />
+      <FeeAdjustmentModal />
       <ComposeEmailModal />
       <AuthModal />
       <ToastContainer />

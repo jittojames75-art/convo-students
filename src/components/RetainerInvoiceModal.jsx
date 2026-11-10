@@ -9,7 +9,8 @@ import {
   RotateCcw,
   Sparkles,
   Download,
-  Copy
+  Copy,
+  SlidersHorizontal
 } from 'lucide-react';
 import { numberToIndianWords } from '../utils/numberToWords';
 
@@ -20,6 +21,7 @@ export default function RetainerInvoiceModal() {
     activeInvoiceData, 
     organization,
     settings,
+    openFeeAdjustment,
     addToast
   } = useAcademy();
 
@@ -200,6 +202,22 @@ export default function RetainerInvoiceModal() {
           </div>
 
           <div className="flex items-center gap-2">
+            {!isBlank && activeInvoiceData?.studentObj && (
+              <button
+                type="button"
+                onClick={() => {
+                  const stu = activeInvoiceData.studentObj;
+                  setIsInvoiceModalOpen(false);
+                  openFeeAdjustment(stu);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs cursor-pointer transition-all"
+                title="Adjust tuition fee, apply concession, or set target due amount"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Adjust Fee / Due</span>
+              </button>
+            )}
+
             {!isBlank && (
               <button
                 type="button"

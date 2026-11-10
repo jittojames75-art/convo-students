@@ -212,10 +212,27 @@ export function AcademyProvider({ children }) {
       paidAmount,
       balanceDue,
       paymentMethod: student.installments?.find(i => i.method)?.method || 'UPI(ID:628943139310)',
-      upiId: student.upiId || '628943139310'
+      upiId: student.upiId || '628943139310',
+      studentObj: student
     });
     setIsInvoiceModalOpen(true);
   };
+
+  // Fee Adjustment & Due Amount Modal State
+  const [isFeeAdjustmentModalOpen, setIsFeeAdjustmentModalOpen] = useState(false);
+  const [selectedStudentForAdjustment, setSelectedStudentForAdjustment] = useState(null);
+
+  const openFeeAdjustment = (student) => {
+    if (!student) return;
+    setSelectedStudentForAdjustment(student);
+    setIsFeeAdjustmentModalOpen(true);
+  };
+
+  const closeFeeAdjustment = () => {
+    setIsFeeAdjustmentModalOpen(false);
+    setSelectedStudentForAdjustment(null);
+  };
+
   const [isComposeEmailOpen, setIsComposeEmailOpen] = useState(false);
   const [composeEmailProps, setComposeEmailProps] = useState(null);
 
@@ -430,9 +447,14 @@ export function AcademyProvider({ children }) {
     }
   };
 
-  // Record a payment for an installment or full payment
+  // Record a payment for an installment, custom amount, or full settlement
   const recordPayment = (studentId, installmentIndex, paymentDetails) => {
-    const { paymentMethod = 'Stripe Card', transactionRef = `TXN-${Math.floor(10000 + Math.random() * 90000)}`, note = '' } = paymentDetails;
+    const { 
+      paymentMethod = 'UPI / QR', 
+      transactionRef = `TXN-${Math.floor(10000 + Math.random() * 90000)}`, 
+      note = '',
+      customAmount = null
+    } = paymentDetails;
     
     let updatedStudentObj = null;
     let paidAmount = 0;
@@ -442,17 +464,22 @@ export function AcademyProvider({ children }) {
       prev.map((student) => {
         if (student.id !== studentId) return student;
 
+        const currentInst = student.installments[installmentIndex] || student.installments[0];
+        paidAmount = customAmount !== null && Number(customAmount) > 0 
+          ? Number(customAmount) 
+          : (currentInst ? currentInst.amount : student.remainingBalance);
+
+        installmentTitle = currentInst ? currentInst.title : 'Tuition Settlement';
+
         const updatedInstallments = student.installments.map((inst, idx) => {
           if (idx === installmentIndex) {
-            paidAmount = inst.amount;
-            installmentTitle = inst.title;
             return {
               ...inst,
               status: 'paid',
               paidDate: new Date().toISOString().split('T')[0],
               transactionRef,
               method: paymentMethod,
-              note
+              note: note || (customAmount ? `Custom settlement ₹${paidAmount}` : '')
             };
           }
           return inst;
@@ -461,11 +488,21 @@ export function AcademyProvider({ children }) {
         const newPaidAmount = student.paidAmount + paidAmount;
         const newRemaining = Math.max(0, student.totalFee - newPaidAmount);
 
+        // If completely paid off, mark any lingering installments as paid
+        const finalizedInstallments = newRemaining === 0
+          ? updatedInstallments.map(i => ({
+              ...i,
+              status: 'paid',
+              paidDate: i.paidDate || new Date().toISOString().split('T')[0],
+              method: i.method || paymentMethod
+            }))
+          : updatedInstallments;
+
         updatedStudentObj = {
           ...student,
           paidAmount: newPaidAmount,
           remainingBalance: newRemaining,
-          installments: updatedInstallments
+          installments: finalizedInstallments
         };
 
         return updatedStudentObj;
@@ -522,12 +559,114 @@ export function AcademyProvider({ children }) {
 
       setEmailLogs((prev) => [newLog, ...prev]);
 
-      addToast(`Payment of ${settings.currency}${paidAmount} recorded successfully! Receipt generated.`, 'success');
+      addToast(`Payment of ${settings.currency}${paidAmount.toLocaleString()} recorded successfully! Remaining Due: ${settings.currency}${updatedStudentObj.remainingBalance.toLocaleString()}`, 'success');
 
       // Open receipt preview
       setActiveReceiptData(receiptData);
       setIsReceiptModalOpen(true);
     }
+  };
+
+  // Adjust Fees & Due Amount with automatic milestone re-balancing
+  const adjustStudentFee = async (studentId, adjustmentDetails) => {
+    const { 
+      newTotalFee, 
+      newRemainingBalance, 
+      discountAmount = 0, 
+      adjustmentReason = '', 
+      adjustmentType = 'discount',
+      installments = null 
+    } = adjustmentDetails;
+
+    let updatedTargetStudent = null;
+
+    setStudents((prev) =>
+      prev.map((student) => {
+        if (student.id !== studentId) return student;
+
+        const previousTotal = student.totalFee;
+        const previousDue = student.remainingBalance;
+        const total = Number(newTotalFee);
+        const due = Number(newRemainingBalance);
+        const base = Math.round(total / 1.18);
+        const gst = total - base;
+
+        // Auto-rebalance installments if not manually provided
+        let updatedInstallments = installments;
+        if (!updatedInstallments) {
+          const unpaid = student.installments.filter(i => i.status !== 'paid');
+          const unpaidCount = unpaid.length || 1;
+          const perInst = Math.round(due / unpaidCount);
+          let runningDue = due;
+          let unpaidProcessed = 0;
+
+          updatedInstallments = student.installments.map((inst) => {
+            if (inst.status === 'paid') return inst;
+            unpaidProcessed += 1;
+            const isLast = unpaidProcessed === unpaidCount;
+            const instAmt = isLast ? runningDue : perInst;
+            runningDue = Math.max(0, runningDue - instAmt);
+
+            return {
+              ...inst,
+              amount: due === 0 ? 0 : instAmt,
+              status: due === 0 ? 'paid' : 'pending'
+            };
+          });
+        }
+
+        const adjustmentRecord = {
+          id: `adj-${Date.now()}`,
+          date: new Date().toISOString().split('T')[0],
+          type: adjustmentType,
+          amount: discountAmount,
+          reason: adjustmentReason || 'Administrative Fee Adjustment',
+          previousTotal,
+          newTotal: total,
+          previousDue,
+          newDue: due,
+          adjustedBy: currentUser?.fullName || currentUser?.username || 'Admin'
+        };
+
+        updatedTargetStudent = {
+          ...student,
+          totalFee: total,
+          baseFee: base,
+          gstAmount: gst,
+          remainingBalance: due,
+          feeAdjustment: adjustmentRecord,
+          adjustmentHistory: [...(student.adjustmentHistory || []), adjustmentRecord],
+          installments: updatedInstallments
+        };
+
+        return updatedTargetStudent;
+      })
+    );
+
+    // Sync to backend API asynchronously
+    try {
+      await ConvosisApi.adjustFee(studentId, {
+        total_fee: newTotalFee,
+        remaining_balance: newRemainingBalance,
+        installments: installments || []
+      });
+    } catch (err) {
+      console.warn('Backend fee adjustment sync notice:', err);
+    }
+
+    addToast(
+      `Fee adjusted for ${updatedTargetStudent?.name || studentId}: Total ${settings.currency}${Number(newTotalFee).toLocaleString()} • Due Amount ${settings.currency}${Number(newRemainingBalance).toLocaleString()}`,
+      'success'
+    );
+
+    return updatedTargetStudent;
+  };
+
+  // Direct student update
+  const updateStudent = (studentId, fieldsToUpdate) => {
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, ...fieldsToUpdate } : s))
+    );
   };
 
   // Add new student enrollment
@@ -1164,6 +1303,15 @@ export function AcademyProvider({ children }) {
         activeInvoiceData,
         setActiveInvoiceData,
         openInvoice,
+        // Fee Adjustment & Due Amount Management
+        isFeeAdjustmentModalOpen,
+        setIsFeeAdjustmentModalOpen,
+        selectedStudentForAdjustment,
+        setSelectedStudentForAdjustment,
+        openFeeAdjustment,
+        closeFeeAdjustment,
+        adjustStudentFee,
+        updateStudent,
         isComposeEmailOpen,
         setIsComposeEmailOpen,
         composeEmailProps,

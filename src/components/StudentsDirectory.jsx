@@ -17,7 +17,8 @@ import {
   Receipt,
   Award,
   Trash2,
-  FileText
+  FileText,
+  SlidersHorizontal
 } from 'lucide-react';
 import CertificateModal from './CertificateModal';
 
@@ -36,6 +37,7 @@ export default function StudentsDirectory() {
     setIsComposeEmailOpen,
     setComposeEmailProps,
     openInvoice,
+    openFeeAdjustment,
     addToast
   } = useAcademy();
 
@@ -186,6 +188,7 @@ export default function StudentsDirectory() {
                 <th className="py-2.5 pl-3">Candidate & ID</th>
                 <th className="py-2.5">Program</th>
                 <th className="py-2.5">Fee Mode</th>
+                <th className="py-2.5">Due Amount</th>
                 <th className="py-2.5">3-Month Milestones</th>
                 <th className="py-2.5 text-center">Attendance</th>
                 <th className="py-2.5 text-right pr-3">Actions</th>
@@ -194,7 +197,7 @@ export default function StudentsDirectory() {
             <tbody className="divide-y divide-slate-100">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-slate-400">
+                  <td colSpan="7" className="py-8 text-center text-slate-400">
                     No candidates matching your search criteria.
                   </td>
                 </tr>
@@ -260,10 +263,28 @@ export default function StudentsDirectory() {
                               3-Mo Plan
                             </span>
                             <div className="text-[9px] text-slate-500 mt-0.5">
-                              {settings.currency}{student.paidAmount} of {settings.currency}{student.totalFee}
+                              {settings.currency}{student.paidAmount.toLocaleString()} of {settings.currency}{student.totalFee.toLocaleString()}
                             </div>
                           </div>
                         )}
+                      </td>
+
+                      {/* Due Amount Column */}
+                      <td className="py-2">
+                        <div className="flex flex-col">
+                          <span className={`font-bold text-xs ${student.remainingBalance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {settings.currency}{student.remainingBalance.toLocaleString()}
+                          </span>
+                          {student.remainingBalance > 0 ? (
+                            <span className="text-[9px] text-amber-700/80 font-medium">
+                              Due
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-600 font-semibold">
+                              Settled
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* 3-Month Installment Visual Timeline */}
@@ -331,6 +352,14 @@ export default function StudentsDirectory() {
                               <CreditCard className="w-3.5 h-3.5" />
                             </button>
                           )}
+
+                          <button
+                            onClick={() => openFeeAdjustment(student)}
+                            className="p-1 rounded-md text-cyan-700 hover:bg-cyan-50 border border-cyan-300 transition-all cursor-pointer"
+                            title="Adjust Tuition Fee & Due Amount (Scholarship / Surcharge / Due Target)"
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-700" />
+                          </button>
 
                           <button
                             onClick={() => openInvoice(student, 'retainer')}
@@ -420,19 +449,47 @@ export default function StudentsDirectory() {
             </div>
 
             {/* Attendance & Financial Snapshot */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl glass-card border">
-                <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">Fee Account</span>
-                <div className="text-2xl font-extrabold text-blue-600 mt-1">
-                  {settings.currency}{selectedStudentDetail.paidAmount} / {settings.currency}{selectedStudentDetail.totalFee}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl glass-card border bg-slate-50/50 dark:bg-slate-800/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Tuition & Due Status</span>
+                  <button
+                    onClick={() => {
+                      const st = selectedStudentDetail;
+                      setSelectedStudentDetail(null);
+                      openFeeAdjustment(st);
+                    }}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs cursor-pointer"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    <span>Adjust Fee</span>
+                  </button>
                 </div>
-                <div className="text-xs opacity-75 mt-1">
-                  Remaining: <span className="font-bold">{settings.currency}{selectedStudentDetail.remainingBalance}</span>
+                
+                <div className="flex items-baseline justify-between pt-1">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Total / Paid</span>
+                    <div className="text-base font-bold text-slate-800 dark:text-slate-100">
+                      {settings.currency}{selectedStudentDetail.paidAmount.toLocaleString()} / {settings.currency}{selectedStudentDetail.totalFee.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Due Amount</span>
+                    <div className={`text-xl font-extrabold ${selectedStudentDetail.remainingBalance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {settings.currency}{selectedStudentDetail.remainingBalance.toLocaleString()}
+                    </div>
+                  </div>
                 </div>
+
+                {selectedStudentDetail.feeAdjustment && (
+                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-[11px] text-amber-800 dark:text-amber-200">
+                    <span className="font-bold">Fee Adjustment Applied:</span> {selectedStudentDetail.feeAdjustment.reason} ({selectedStudentDetail.feeAdjustment.amount ? `₹${selectedStudentDetail.feeAdjustment.amount.toLocaleString()} Concession` : selectedStudentDetail.feeAdjustment.type})
+                  </div>
+                )}
               </div>
 
-              <div className="p-4 rounded-2xl glass-card border">
-                <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">Attendance Rate</span>
+              <div className="p-4 rounded-2xl glass-card border bg-slate-50/50 dark:bg-slate-800/40">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Attendance Rate</span>
                 <div className="text-2xl font-extrabold text-indigo-600 mt-1">
                   {selectedStudentDetail.attendanceStats.percentage}%
                 </div>

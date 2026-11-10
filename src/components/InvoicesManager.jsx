@@ -14,7 +14,8 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Eye,
-  CreditCard
+  CreditCard,
+  SlidersHorizontal
 } from 'lucide-react';
 
 export default function InvoicesManager() {
@@ -23,6 +24,7 @@ export default function InvoicesManager() {
     settings, 
     organization,
     openInvoice, 
+    openFeeAdjustment,
     setIsInvoiceModalOpen,
     setActiveInvoiceData 
   } = useAcademy();
@@ -239,6 +241,16 @@ export default function InvoicesManager() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            onClick={() => openFeeAdjustment(student)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 shadow-xs cursor-pointer transition-all"
+                            title="Adjust fees, apply concession or modify target due"
+                          >
+                            <SlidersHorizontal className="w-3 h-3 text-cyan-600" />
+                            <span>Adjust Fee</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => openInvoice(student, docType)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#14539a] hover:bg-[#0f4077] text-white shadow-xs cursor-pointer transition-all"
                             title="Open official Convosis Invoice"
@@ -260,3 +272,4 @@ export default function InvoicesManager() {
     </div>
   );
 }
+

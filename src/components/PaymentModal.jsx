@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAcademy } from '../context/AcademyContext';
-import { CreditCard, DollarSign, CheckCircle2, X } from 'lucide-react';
+import { CreditCard, DollarSign, CheckCircle2, X, AlertCircle } from 'lucide-react';
 
 export default function PaymentModal() {
   const { 
@@ -12,27 +12,41 @@ export default function PaymentModal() {
     recordPayment 
   } = useAcademy();
 
-  const [paymentMethod, setPaymentMethod] = useState('Stripe Card');
+  const [paymentMethod, setPaymentMethod] = useState('UPI / QR');
   const [transactionRef, setTransactionRef] = useState(() => `TXN-${Math.floor(10000 + Math.random() * 90000)}`);
   const [note, setNote] = useState('');
+  const [settleAmount, setSettleAmount] = useState('');
+
+  const currentInstallment = selectedStudentForPayment?.installments[selectedInstallmentIndex] || selectedStudentForPayment?.installments[0];
+
+  useEffect(() => {
+    if (currentInstallment) {
+      setSettleAmount(currentInstallment.amount.toString());
+      setTransactionRef(`TXN-${Math.floor(10000 + Math.random() * 90000)}`);
+      setNote('');
+    }
+  }, [currentInstallment, selectedStudentForPayment]);
 
   if (!isPaymentModalOpen || !selectedStudentForPayment) return null;
 
-  const currentInstallment = selectedStudentForPayment.installments[selectedInstallmentIndex] || selectedStudentForPayment.installments[0];
+  const currentDue = selectedStudentForPayment.remainingBalance;
+  const numSettleAmount = Number(settleAmount) || 0;
+  const resultingDue = Math.max(0, currentDue - numSettleAmount);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     recordPayment(selectedStudentForPayment.id, selectedInstallmentIndex, {
       paymentMethod,
       transactionRef,
-      note
+      note,
+      customAmount: numSettleAmount
     });
     setIsPaymentModalOpen(false);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="glass-card rounded-3xl max-w-md w-full p-6 sm:p-7 border shadow-2xl space-y-5">
+      <div className="glass-card rounded-3xl max-w-md w-full p-6 sm:p-7 border shadow-2xl space-y-4">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/10">
@@ -42,7 +56,7 @@ export default function PaymentModal() {
             </div>
             <div>
               <h2 className="text-lg font-extrabold tracking-tight">Record Tuition Settlement</h2>
-              <p className="text-xs opacity-70">Official Invoice Receipt Generation</p>
+              <p className="text-xs opacity-70">Payment reconciliation & official receipt</p>
             </div>
           </div>
 
@@ -55,9 +69,9 @@ export default function PaymentModal() {
         </div>
 
         {/* Target Details */}
-        <div className="p-4 rounded-2xl glass-card border bg-black/5 dark:bg-white/5 space-y-2 text-xs">
+        <div className="p-3.5 rounded-2xl glass-card border bg-black/5 dark:bg-white/5 space-y-2 text-xs">
           <div className="flex justify-between">
-            <span className="opacity-70">Student:</span>
+            <span className="opacity-70">Candidate:</span>
             <span className="font-bold">{selectedStudentForPayment.name} ({selectedStudentForPayment.id})</span>
           </div>
           <div className="flex justify-between">
@@ -65,19 +79,66 @@ export default function PaymentModal() {
             <span className="font-medium">{selectedStudentForPayment.programTitle}</span>
           </div>
           <div className="flex justify-between">
-            <span className="opacity-70">Milestone:</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400">{currentInstallment?.title}</span>
+            <span className="opacity-70">Target Milestone:</span>
+            <span className="font-bold text-cyan-700 dark:text-cyan-400">{currentInstallment?.title}</span>
           </div>
-          <div className="flex justify-between pt-2 border-t border-black/5 dark:border-white/10 text-sm">
-            <span className="font-bold">Amount to Settle:</span>
-            <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-              {settings.currency}{currentInstallment?.amount}
+          <div className="flex justify-between items-center pt-2 border-t border-black/5 dark:border-white/10">
+            <span className="opacity-70 font-semibold">Total Outstanding Due:</span>
+            <span className="text-sm font-extrabold text-amber-600">
+              {settings.currency}{currentDue.toLocaleString()}
             </span>
           </div>
         </div>
 
         {/* Payment Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+          {/* Editable Settlement Amount & Quick Options */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-bold text-slate-800 dark:text-slate-200">Amount to Settle (₹)</label>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setSettleAmount(currentInstallment?.amount.toString() || '0')}
+                  className="text-cyan-600 hover:underline font-bold"
+                >
+                  Milestone (₹{currentInstallment?.amount})
+                </button>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => setSettleAmount(currentDue.toString())}
+                  className="text-emerald-600 hover:underline font-bold"
+                >
+                  Full Due (₹{currentDue.toLocaleString()})
+                </button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-500 text-sm">
+                {settings.currency}
+              </span>
+              <input
+                type="number"
+                required
+                min="1"
+                max={currentDue || 1000000}
+                value={settleAmount}
+                onChange={(e) => setSettleAmount(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 rounded-xl glass-input outline-hidden font-extrabold text-base text-emerald-600"
+              />
+            </div>
+
+            {/* Live Due Amount Calculation */}
+            <div className="flex items-center justify-between text-[11px] mt-1.5 px-1 font-semibold text-slate-500">
+              <span>Remaining Due after payment:</span>
+              <span className={resultingDue > 0 ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold'}>
+                {settings.currency}{resultingDue.toLocaleString()} {resultingDue === 0 && '(Fully Settled)'}
+              </span>
+            </div>
+          </div>
+
           <div>
             <label className="font-bold opacity-75 block mb-1">Payment Method</label>
             <select
@@ -85,9 +146,9 @@ export default function PaymentModal() {
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full px-3 py-2 rounded-xl glass-input outline-hidden cursor-pointer"
             >
-              <option value="Stripe Card">Credit Card (Stripe / Visa / Mastercard)</option>
-              <option value="Bank Transfer">Direct Bank Wire / SWIFT</option>
-              <option value="UPI / QR">Instant UPI / QR Code</option>
+              <option value="UPI / QR">Instant UPI / QR Code (UPI(ID:628943139310))</option>
+              <option value="Bank Transfer">Direct Bank Wire / NEFT / IMPS</option>
+              <option value="Stripe Card">Credit / Debit Card (Stripe / Visa)</option>
               <option value="PayPal">PayPal Business</option>
               <option value="Cash Counter">Cash at Reception</option>
             </select>
@@ -117,7 +178,7 @@ export default function PaymentModal() {
             <label className="font-bold opacity-75 block mb-1">Internal Note / Comments (Optional)</label>
             <input
               type="text"
-              placeholder="e.g. Cleared via online banking portal"
+              placeholder="e.g. Cleared via UPI transaction ID"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full px-3 py-2 rounded-xl glass-input outline-hidden"

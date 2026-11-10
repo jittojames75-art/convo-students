@@ -53,6 +53,41 @@ class StudentViewSet(viewsets.ModelViewSet):
             'student': StudentSerializer(student).data
         })
 
+    @action(detail=True, methods=['post'], url_path='adjust-fee')
+    def adjust_fee(self, request, pk=None):
+        student = self.get_object()
+        new_total_fee = request.data.get('total_fee')
+        new_remaining_balance = request.data.get('remaining_balance')
+        installments_data = request.data.get('installments', [])
+
+        if new_total_fee is not None:
+            student.total_fee = new_total_fee
+        if new_remaining_balance is not None:
+            student.remaining_balance = new_remaining_balance
+        else:
+            student.remaining_balance = max(0, student.total_fee - student.paid_amount)
+        student.save()
+
+        for inst_data in installments_data:
+            inst_id = inst_data.get('id')
+            if inst_id:
+                try:
+                    inst = student.installments.get(id=inst_id)
+                    if 'amount' in inst_data:
+                        inst.amount = inst_data['amount']
+                    if 'status' in inst_data:
+                        inst.status = inst_data['status']
+                    if 'title' in inst_data:
+                        inst.title = inst_data['title']
+                    inst.save()
+                except Exception:
+                    pass
+
+        return Response({
+            'message': 'Fee and due amount adjusted successfully',
+            'student': StudentSerializer(student).data
+        })
+
 
 class InstallmentViewSet(viewsets.ModelViewSet):
     queryset = Installment.objects.all()
