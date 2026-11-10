@@ -64,3 +64,4 @@ async function convertPdfPageToImage(file) {
   // Optional: Trim excess white margins if needed or return clean data URL
   return canvas.toDataURL('image/png');
 }
+

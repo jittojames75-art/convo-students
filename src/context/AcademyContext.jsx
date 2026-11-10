@@ -17,7 +17,7 @@ const AcademyContext = createContext();
 export function AcademyProvider({ children }) {
   // Fixed permanent Minimal Light Theme
   const theme = 'theme-minimal-light';
-  const setTheme = () => {}; // no-op since fixed theme requested
+  const setTheme = () => { }; // no-op since fixed theme requested
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,7 +125,7 @@ export function AcademyProvider({ children }) {
   const [organization, setOrganization] = useState(() => {
     const saved = localStorage.getItem('convosis_organization');
     if (saved) {
-      try { 
+      try {
         const parsed = JSON.parse(saved);
         return {
           ...parsed,
@@ -136,7 +136,7 @@ export function AcademyProvider({ children }) {
           email: 'info@convosis.com',
           phone: '+91 8943440266'
         };
-      } catch {}
+      } catch { }
     }
     return {
       id: 1,
@@ -157,9 +157,9 @@ export function AcademyProvider({ children }) {
     const saved = localStorage.getItem('nexus_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { 
-        ...INITIAL_ACADEMY_SETTINGS, 
-        ...parsed, 
+      return {
+        ...INITIAL_ACADEMY_SETTINGS,
+        ...parsed,
         name: 'Convosis Technologies Private Limited',
         orgNumber: parsed.orgNumber || 'CV-ORG-2026',
         cinNumber: parsed.cinNumber || 'U72900KA2026PTC184920',
@@ -211,7 +211,7 @@ export function AcademyProvider({ children }) {
     const gstAmount = Number(student.gstAmount) || (totalFee - baseFee);
     const paidAmount = Number(student.paidAmount) || 0;
     const balanceDue = Number(student.remainingBalance) ?? Math.max(0, totalFee - paidAmount);
-    
+
     // Auto-generate official sequence number: CONV/26-27/003
     const numPart = student.id ? student.id.replace(/\D/g, '').slice(-3).padStart(3, '0') : '003';
     const invoiceNumber = `CONV/26-27/${numPart}`;
@@ -261,7 +261,7 @@ export function AcademyProvider({ children }) {
   // Authentication & Multi-User State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin'); // 'signin' or 'signup'
-  
+
   // Multiple Simultaneous Logged-In Sessions
   const [activeSessions, setActiveSessions] = useState(() => {
     const saved = localStorage.getItem('convosis_active_sessions');
@@ -269,7 +269,7 @@ export function AcademyProvider({ children }) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
-      } catch {}
+      } catch { }
     }
     return [];
   });
@@ -277,7 +277,7 @@ export function AcademyProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('convosis_user');
     if (saved) {
-      try { return JSON.parse(saved); } catch {}
+      try { return JSON.parse(saved); } catch { }
     }
     return null; // Requires login first before adding data
   });
@@ -471,13 +471,13 @@ export function AcademyProvider({ children }) {
 
   // Record a payment for an installment, custom amount, or full settlement
   const recordPayment = (studentId, installmentIndex, paymentDetails) => {
-    const { 
-      paymentMethod = 'UPI / QR', 
-      transactionRef = `TXN-${Math.floor(10000 + Math.random() * 90000)}`, 
+    const {
+      paymentMethod = 'UPI / QR',
+      transactionRef = `TXN-${Math.floor(10000 + Math.random() * 90000)}`,
       note = '',
       customAmount = null
     } = paymentDetails;
-    
+
     let updatedStudentObj = null;
     let paidAmount = 0;
     let installmentTitle = '';
@@ -487,8 +487,8 @@ export function AcademyProvider({ children }) {
         if (student.id !== studentId) return student;
 
         const currentInst = student.installments[installmentIndex] || student.installments[0];
-        paidAmount = customAmount !== null && Number(customAmount) > 0 
-          ? Number(customAmount) 
+        paidAmount = customAmount !== null && Number(customAmount) > 0
+          ? Number(customAmount)
           : (currentInst ? currentInst.amount : student.remainingBalance);
 
         installmentTitle = currentInst ? currentInst.title : 'Tuition Settlement';
@@ -513,11 +513,11 @@ export function AcademyProvider({ children }) {
         // If completely paid off, mark any lingering installments as paid
         const finalizedInstallments = newRemaining === 0
           ? updatedInstallments.map(i => ({
-              ...i,
-              status: 'paid',
-              paidDate: i.paidDate || new Date().toISOString().split('T')[0],
-              method: i.method || paymentMethod
-            }))
+            ...i,
+            status: 'paid',
+            paidDate: i.paidDate || new Date().toISOString().split('T')[0],
+            method: i.method || paymentMethod
+          }))
           : updatedInstallments;
 
         updatedStudentObj = {
@@ -591,13 +591,13 @@ export function AcademyProvider({ children }) {
 
   // Adjust Fees & Due Amount with automatic milestone re-balancing
   const adjustStudentFee = async (studentId, adjustmentDetails) => {
-    const { 
-      newTotalFee, 
-      newRemainingBalance, 
-      discountAmount = 0, 
-      adjustmentReason = '', 
+    const {
+      newTotalFee,
+      newRemainingBalance,
+      discountAmount = 0,
+      adjustmentReason = '',
       adjustmentType = 'discount',
-      installments = null 
+      installments = null
     } = adjustmentDetails;
 
     let updatedTargetStudent = null;
@@ -745,7 +745,7 @@ export function AcademyProvider({ children }) {
           spread: 60,
           origin: { y: 0.7 }
         });
-      } catch {}
+      } catch { }
     }
 
     // Sync to Django backend API asynchronously
