@@ -8,7 +8,8 @@ import {
   CalendarCheck, 
   Mail, 
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -32,6 +33,7 @@ export default function Navigation() {
     { id: 'courses', label: 'Courses & Internships', icon: BookOpen },
     { id: 'students', label: 'Candidates Directory', icon: Users, badge: students.length },
     { id: 'fees', label: 'Fees & 3-Mo Installments', icon: CreditCard, alert: overdueCount > 0 ? overdueCount : null },
+    { id: 'invoices', label: 'Invoices & Retainers', icon: FileText },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck, alert: lowAttendanceCount > 0 ? lowAttendanceCount : null },
     { id: 'email_automation', label: 'Email Automation', icon: Mail },
   ];

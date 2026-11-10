@@ -125,17 +125,29 @@ export function AcademyProvider({ children }) {
   const [organization, setOrganization] = useState(() => {
     const saved = localStorage.getItem('convosis_organization');
     if (saved) {
-      try { return JSON.parse(saved); } catch {}
+      try { 
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          name: 'CONVOSIS TECHNOLOGIES PRIVATE LIMITED',
+          address: 'TechnolodgePhase II, AnugrahaMedicalComplexBuilding, Union Club Road, Kottayam, Kerala – 686003',
+          taxId: '32AANCC9298C1ZE',
+          gstin: '32AANCC9298C1ZE',
+          email: 'info@convosis.com',
+          phone: '+91 8943440266'
+        };
+      } catch {}
     }
     return {
       id: 1,
-      name: 'Convosis Technologies Private Limited',
+      name: 'CONVOSIS TECHNOLOGIES PRIVATE LIMITED',
       orgNumber: 'CV-ORG-2026', // Unique Organization Code
       cinNumber: 'U72900KA2026PTC184920',
-      taxId: 'GSTIN29AAACC1234D1Z5',
-      email: 'contact@convosis.com',
-      phone: '+91 (800) 584-TECH',
-      address: 'Innovation Hub, Cyber City, Bangalore, India',
+      taxId: '32AANCC9298C1ZE',
+      gstin: '32AANCC9298C1ZE',
+      email: 'info@convosis.com',
+      phone: '+91 8943440266',
+      address: 'TechnolodgePhase II, AnugrahaMedicalComplexBuilding, Union Club Road, Kottayam, Kerala – 686003',
       currency: '₹',
       currencyCode: 'INR'
     };
@@ -165,6 +177,45 @@ export function AcademyProvider({ children }) {
   const [selectedInstallmentIndex, setSelectedInstallmentIndex] = useState(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [activeReceiptData, setActiveReceiptData] = useState(null);
+
+  // Official Convosis Invoice & Retainer Invoice Modal state
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [activeInvoiceData, setActiveInvoiceData] = useState(null);
+
+  const openInvoice = (student, type = 'retainer') => {
+    if (!student) return;
+    const totalFee = Number(student.totalFee) || 35400;
+    const baseFee = Number(student.baseFee) || Math.round(totalFee / 1.18);
+    const gstAmount = Number(student.gstAmount) || (totalFee - baseFee);
+    const paidAmount = Number(student.paidAmount) || 0;
+    const balanceDue = Number(student.remainingBalance) ?? Math.max(0, totalFee - paidAmount);
+    
+    // Auto-generate official sequence number: CONV/26-27/003
+    const numPart = student.id ? student.id.replace(/\D/g, '').slice(-3).padStart(3, '0') : '003';
+    const invoiceNumber = `CONV/26-27/${numPart}`;
+
+    setActiveInvoiceData({
+      invoiceNumber,
+      invoiceType: type, // 'retainer' or 'tax'
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+      rawDate: new Date().toLocaleDateString('en-GB'),
+      studentName: student.name || 'Adithya Krishna PK',
+      address: student.address || 'Vilayil Veedu, Ellukala , Puthuppally P.O, Kottayam',
+      phone: student.phone || '+91 9383445417',
+      email: student.email || 'info@convosis.com',
+      programTitle: student.programTitle || 'Ethical hacking and Cybersecurity',
+      programType: student.programType || 'internship',
+      baseFee,
+      gstPercent: student.gstPercent || 18,
+      gstAmount,
+      totalFee,
+      paidAmount,
+      balanceDue,
+      paymentMethod: student.installments?.find(i => i.method)?.method || 'UPI(ID:628943139310)',
+      upiId: student.upiId || '628943139310'
+    });
+    setIsInvoiceModalOpen(true);
+  };
   const [isComposeEmailOpen, setIsComposeEmailOpen] = useState(false);
   const [composeEmailProps, setComposeEmailProps] = useState(null);
 
@@ -440,12 +491,20 @@ export function AcademyProvider({ children }) {
         studentEmail: updatedStudentObj.email,
         studentId: updatedStudentObj.id,
         programTitle: updatedStudentObj.programTitle,
+        programType: updatedStudentObj.programType || 'internship',
         amountPaid: paidAmount,
+        totalPaidAmount: updatedStudentObj.paidAmount,
+        totalFee: updatedStudentObj.totalFee || 35400,
+        baseFee: updatedStudentObj.baseFee || 30000,
+        gstAmount: updatedStudentObj.gstAmount || 5400,
         paymentDate: new Date().toISOString().split('T')[0],
         paymentMethod,
         remainingBalance: updatedStudentObj.remainingBalance,
         installmentTitle,
-        academyName: settings.name
+        address: updatedStudentObj.address || 'Vilayil Veedu, Ellukala , Puthuppally P.O, Kottayam',
+        phone: updatedStudentObj.phone || '+91 9383445417',
+        academyName: settings.name,
+        studentObj: updatedStudentObj
       };
 
       // Create email log
@@ -1099,6 +1158,12 @@ export function AcademyProvider({ children }) {
         setIsReceiptModalOpen,
         activeReceiptData,
         setActiveReceiptData,
+        // Invoice & Retainer Modal
+        isInvoiceModalOpen,
+        setIsInvoiceModalOpen,
+        activeInvoiceData,
+        setActiveInvoiceData,
+        openInvoice,
         isComposeEmailOpen,
         setIsComposeEmailOpen,
         composeEmailProps,

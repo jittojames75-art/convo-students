@@ -19,10 +19,11 @@ export default function NewAdmissionModal() {
     name: '',
     email: '',
     phone: '',
+    address: '',
     programId: allPrograms[0]?.id || '',
     paymentMode: 'installment', // 'full' or 'installment'
     initialPaymentMade: false,
-    paymentMethod: 'Bank Transfer'
+    paymentMethod: 'UPI'
   });
 
   if (!isAdmissionModalOpen) return null;
@@ -150,10 +151,14 @@ export default function NewAdmissionModal() {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
+      address: formData.address || 'Vilayil Veedu, Ellukala , Puthuppally P.O, Kottayam',
       programId: selectedProgram.id,
       programTitle: selectedProgram.title,
       programType: selectedProgram.type,
       paymentMode: formData.paymentMode,
+      baseFee,
+      gstPercent,
+      gstAmount,
       totalFee: fullAmount,
       paidAmount,
       remainingBalance: Math.max(0, fullAmount - paidAmount),
@@ -223,6 +228,17 @@ export default function NewAdmissionModal() {
                 required
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg glass-input font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">Residential Address (for Retainer Invoice)</label>
+              <input
+                type="text"
+                placeholder="e.g. Vilayil Veedu, Ellukala, Puthuppally P.O, Kottayam"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg glass-input font-medium"
               />
             </div>

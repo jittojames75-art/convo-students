@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import CoursesInternships from './components/CoursesInternships';
 import StudentsDirectory from './components/StudentsDirectory';
 import FeesManagement from './components/FeesManagement';
+import InvoicesManager from './components/InvoicesManager';
 import AttendanceTracker from './components/AttendanceTracker';
 import EmailAutomation from './components/EmailAutomation';
 import AdminPanel from './components/AdminPanel';
@@ -13,6 +14,7 @@ import SettingsManager from './components/SettingsManager';
 import NewAdmissionModal from './components/NewAdmissionModal';
 import PaymentModal from './components/PaymentModal';
 import ReceiptModal from './components/ReceiptModal';
+import RetainerInvoiceModal from './components/RetainerInvoiceModal';
 import ComposeEmailModal from './components/ComposeEmailModal';
 import AuthModal from './components/AuthModal';
 import LoginPage from './components/LoginPage';
@@ -60,6 +62,7 @@ export default function App() {
         {activeTab === 'courses' && <CoursesInternships />}
         {activeTab === 'students' && <StudentsDirectory />}
         {activeTab === 'fees' && <FeesManagement />}
+        {activeTab === 'invoices' && <InvoicesManager />}
         {activeTab === 'attendance' && <AttendanceTracker />}
         {activeTab === 'email_automation' && <EmailAutomation />}
         {activeTab === 'admin_panel' && (isAdminOrSuperAdmin ? <AdminPanel /> : <Dashboard />)}
@@ -78,6 +81,7 @@ export default function App() {
       <NewAdmissionModal />
       <PaymentModal />
       <ReceiptModal />
+      <RetainerInvoiceModal />
       <ComposeEmailModal />
       <AuthModal />
       <ToastContainer />

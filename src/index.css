@@ -108,3 +108,30 @@ body {
   background-color: #27c93f;
   border: 1px solid #1aab29;
 }
+
+/* Print Optimization for Invoices & Receipts */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .no-print,
+  .orb,
+  header,
+  nav,
+  footer {
+    display: none !important;
+  }
+  #printable-retainer-invoice,
+  #printable-receipt {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 10px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+  }
+}

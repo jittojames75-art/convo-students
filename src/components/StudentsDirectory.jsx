@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Receipt,
   Award,
-  Trash2
+  Trash2,
+  FileText
 } from 'lucide-react';
 import CertificateModal from './CertificateModal';
 
@@ -34,6 +35,7 @@ export default function StudentsDirectory() {
     setIsPaymentModalOpen,
     setIsComposeEmailOpen,
     setComposeEmailProps,
+    openInvoice,
     addToast
   } = useAcademy();
 
@@ -331,6 +333,14 @@ export default function StudentsDirectory() {
                           )}
 
                           <button
+                            onClick={() => openInvoice(student, 'retainer')}
+                            className="p-1 rounded-md text-[#0a2f5c] hover:bg-slate-100 border border-slate-300 transition-all cursor-pointer"
+                            title="Generate Official Retainer Invoice"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#0a2f5c]" />
+                          </button>
+
+                          <button
                             onClick={() => handleOpenCompose(student, hasOverdue ? 'fee_overdue' : 'fee_reminder')}
                             className="p-1 rounded-md text-cyan-700 hover:bg-cyan-50 border border-cyan-200 transition-all cursor-pointer"
                             title="Send Automated Email"
@@ -494,6 +504,19 @@ export default function StudentsDirectory() {
               </button>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const stu = selectedStudentDetail;
+                    setSelectedStudentDetail(null);
+                    openInvoice(stu, 'retainer');
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#0a2f5c] hover:bg-[#072447] text-white shadow-xs cursor-pointer flex items-center gap-1.5"
+                  title="View and print official Convosis Retainer Invoice"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Retainer Invoice</span>
+                </button>
+
                 <button
                   onClick={() => {
                     const stu = selectedStudentDetail;

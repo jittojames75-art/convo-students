@@ -26,6 +26,7 @@ export default function FeesManagement() {
     setIsPaymentModalOpen,
     setActiveReceiptData,
     setIsReceiptModalOpen,
+    openInvoice,
     setIsComposeEmailOpen,
     setComposeEmailProps,
     addToast
@@ -287,6 +288,15 @@ export default function FeesManagement() {
                       {settings.currency}{student.remainingBalance}
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => openInvoice(student, 'retainer')}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#0a2f5c] hover:bg-[#072447] text-white shadow-xs cursor-pointer transition-all ml-1"
+                    title="Generate and print official Convosis Retainer Invoice"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Retainer</span>
+                  </button>
                 </div>
               </div>
 

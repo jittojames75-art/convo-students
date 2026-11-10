@@ -1,9 +1,9 @@
 import React from 'react';
 import { useAcademy } from '../context/AcademyContext';
-import { Printer, Download, CheckCircle2, X, ShieldCheck } from 'lucide-react';
+import { Printer, Download, CheckCircle2, X, ShieldCheck, FileText } from 'lucide-react';
 
 export default function ReceiptModal() {
-  const { isReceiptModalOpen, setIsReceiptModalOpen, activeReceiptData, settings } = useAcademy();
+  const { isReceiptModalOpen, setIsReceiptModalOpen, activeReceiptData, openInvoice, settings } = useAcademy();
 
   if (!isReceiptModalOpen || !activeReceiptData) return null;
 
@@ -30,6 +30,18 @@ export default function ReceiptModal() {
           </span>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setIsReceiptModalOpen(false);
+                openInvoice(activeReceiptData.studentObj || activeReceiptData, 'retainer');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0a2f5c] hover:bg-[#072447] text-white shadow-xs cursor-pointer transition-all"
+              title="Open full official Convosis Retainer Invoice format"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Retainer Invoice</span>
+            </button>
+
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs cursor-pointer transition-all"
